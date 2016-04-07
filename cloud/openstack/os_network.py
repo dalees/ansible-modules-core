@@ -115,6 +115,18 @@ network:
             description: The associated subnets.
             type: list
             sample: []
+        provider_network_type:
+            description: Type of the provider network.
+            type: string
+            sample: "flat"
+        provider_physical_network:
+            description: Physical interface mapping name for the provider network.
+            type: string
+            sample: "public"
+        provider_segmentation_id:
+            description: Segmentation id for the provider network.
+            type: string
+            sample: "public"
 '''
 
 
@@ -125,6 +137,9 @@ def main():
         admin_state_up=dict(default=True, type='bool'),
         external=dict(default=False, type='bool'),
         state=dict(default='present', choices=['absent', 'present']),
+        provider_network_type=dict(required=False),
+        provider_physical_network=dict(required=False),
+        provider_segmentation_id=dict(required=False),
     )
 
     module_kwargs = openstack_module_kwargs()
@@ -138,6 +153,18 @@ def main():
     shared = module.params['shared']
     admin_state_up = module.params['admin_state_up']
     external = module.params['external']
+    provider_network_type = module.params['provider_network_type']
+    provider_physical_network = module.params['provider_physical_network']
+    provider_segmentation_id = module.params['provider_segmentation_id']
+
+    # Create provider dict from several params
+    provider = dict()
+    if provider_network_type:
+        provider['network_type'] = provider_network_type
+    if provider_physical_network:
+        provider['physical_network'] = provider_physical_network
+    if provider_segmentation_id:
+        provider['segmentation_id'] = provider_segmentation_id
 
     try:
         cloud = shade.openstack_cloud(**module.params)
@@ -145,7 +172,12 @@ def main():
 
         if state == 'present':
             if not net:
-                net = cloud.create_network(name, shared, admin_state_up, external)
+                net = cloud.create_network(
+                    name,
+                    shared,
+                    admin_state_up,
+                    external,
+                    provider)
                 changed = True
             else:
                 changed = False
